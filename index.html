@@ -34,11 +34,16 @@
       margin-bottom: 8px;
     }
     input {
-      width: 75%;
+      width: 100%;
       padding: 8px;
+      margin-bottom: 5px;
     }
     button {
       padding: 8px 12px;
+      width: 100%;
+    }
+    .name {
+      font-weight: bold;
     }
   </style>
 </head>
@@ -46,13 +51,17 @@
 
 <div class="chat-box">
   <h3>แชทไม่ระบุตัวตน</h3>
+
+  <!-- ตั้งชื่อเล่น -->
+  <input type="text" id="nicknameInput" placeholder="ตั้งชื่อเล่นของคุณ">
+
   <div id="messages"></div>
+
   <input type="text" id="messageInput" placeholder="พิมพ์ข้อความ..." />
   <button onclick="sendMessage()">ส่ง</button>
 </div>
 
 <script>
-  // 🔹 ใส่ firebaseConfig ของคุณตรงนี้
   const firebaseConfig = {
     apiKey: "AIzaSyAU9hjYfn0sdAt0IXCTZ6CRbSV4TR6w5kY",
     authDomain: "su102-2cf53.firebaseapp.com",
@@ -69,14 +78,16 @@
   const db = firebase.firestore();
 
   let userId = "";
+  let nickname = localStorage.getItem("nickname") || "";
 
-  // 🔹 Login แบบไม่ระบุตัวตน
-  auth.signInAnonymously()
-    .then((result) => {
-      userId = result.user.uid;
-    });
+  // โหลดชื่อเล่นเดิม
+  document.getElementById("nicknameInput").value = nickname;
 
-  // 🔹 ฟังข้อความแบบเรียลไทม์
+  auth.signInAnonymously().then((result) => {
+    userId = result.user.uid;
+  });
+
+  // ฟังข้อความเรียลไทม์
   db.collection("messages")
     .orderBy("timestamp")
     .onSnapshot(snapshot => {
@@ -86,20 +97,30 @@
         const data = doc.data();
         const div = document.createElement("div");
         div.className = "msg";
-        div.textContent = "ไม่ระบุชื่อ: " + data.text;
+        div.innerHTML = `<span class="name">${data.nickname || "ไม่ระบุชื่อ"}:</span> ${data.text}`;
         messagesDiv.appendChild(div);
       });
       messagesDiv.scrollTop = messagesDiv.scrollHeight;
     });
 
-  // 🔹 ส่งข้อความ
   function sendMessage() {
     const input = document.getElementById("messageInput");
+    const nickInput = document.getElementById("nicknameInput");
+
+    if (nickInput.value.trim() === "") {
+      alert("กรุณาตั้งชื่อเล่นก่อน");
+      return;
+    }
+
     if (input.value.trim() === "") return;
+
+    nickname = nickInput.value.trim();
+    localStorage.setItem("nickname", nickname);
 
     db.collection("messages").add({
       text: input.value,
       userId: userId,
+      nickname: nickname,
       timestamp: firebase.firestore.FieldValue.serverTimestamp()
     });
 
