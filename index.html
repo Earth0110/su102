@@ -51,6 +51,8 @@
 
 <div class="chat-box">
   <h3>แชทไม่ระบุตัวตน</h3>
+  <p>🟢 ออนไลน์: <span id="onlineCount">0</span> คน</p>
+
 
   <!-- ตั้งชื่อเล่น -->
   <input type="text" id="nicknameInput" placeholder="ตั้งชื่อเล่นของคุณ">
@@ -76,6 +78,8 @@
 
   const auth = firebase.auth();
   const db = firebase.firestore();
+  const onlineRef = db.collection("onlineUsers");
+
 
   let userId = "";
   let nickname = localStorage.getItem("nickname") || "";
@@ -83,9 +87,20 @@
   // โหลดชื่อเล่นเดิม
   document.getElementById("nicknameInput").value = nickname;
 
-  auth.signInAnonymously().then((result) => {
-    userId = result.user.uid;
+    auth.signInAnonymously().then((result) => {
+  userId = result.user.uid;
+
+  // 👉 เพิ่มสถานะออนไลน์
+  onlineRef.doc(userId).set({
+    joinedAt: firebase.firestore.FieldValue.serverTimestamp()
   });
+
+  // 👉 เมื่อปิดเว็บหรือรีเฟรช ให้ออฟไลน์
+  window.addEventListener("beforeunload", () => {
+    onlineRef.doc(userId).delete();
+  });
+});
+
 
   // ฟังข้อความเรียลไทม์
   db.collection("messages")
@@ -127,6 +142,8 @@
     input.value = "";
   }
 </script>
-
+    onlineRef.onSnapshot(snapshot => {
+        document.getElementById("onlineCount").textContent = snapshot.size;
+    });
 </body>
 </html>
