@@ -2,6 +2,7 @@
 <html lang="th">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Anonymous Chat</title>
 
   <!-- Firebase SDK -->
@@ -10,61 +11,266 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 
   <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
     body {
-      font-family: Arial, sans-serif;
-      background: #f4f4f4;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
       display: flex;
       justify-content: center;
-      margin-top: 40px;
+      align-items: center;
+      padding: 20px;
     }
-    .chat-box {
-      width: 400px;
-      background: #fff;
-      padding: 15px;
-      border-radius: 8px;
+
+    .chat-container {
+      width: 100%;
+      max-width: 450px;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      overflow: hidden;
+      animation: slideUp 0.5s ease;
     }
+
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .chat-header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 25px 20px;
+      text-align: center;
+    }
+
+    .chat-header h3 {
+      font-size: 24px;
+      font-weight: 600;
+      margin-bottom: 5px;
+    }
+
+    .chat-header p {
+      font-size: 14px;
+      opacity: 0.9;
+    }
+
+    .chat-body {
+      padding: 20px;
+    }
+
+    .nickname-section {
+      margin-bottom: 20px;
+    }
+
+    .nickname-section label {
+      display: block;
+      color: #666;
+      font-size: 14px;
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+
+    .input-wrapper {
+      position: relative;
+    }
+
+    .input-icon {
+      position: absolute;
+      left: 15px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #999;
+      font-size: 18px;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 14px 15px 14px 45px;
+      border: 2px solid #e0e0e0;
+      border-radius: 12px;
+      font-size: 15px;
+      transition: all 0.3s;
+      outline: none;
+    }
+
+    input[type="text"]:focus {
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
     #messages {
-      height: 300px;
+      height: 400px;
       overflow-y: auto;
-      border: 1px solid #ccc;
-      padding: 10px;
+      background: #f8f9fa;
+      border-radius: 12px;
+      padding: 15px;
+      margin-bottom: 15px;
+      scroll-behavior: smooth;
+    }
+
+    #messages::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    #messages::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    #messages::-webkit-scrollbar-thumb {
+      background: #ccc;
+      border-radius: 10px;
+    }
+
+    #messages::-webkit-scrollbar-thumb:hover {
+      background: #999;
+    }
+
+    .msg {
+      background: white;
+      padding: 12px 15px;
+      border-radius: 12px;
+      margin-bottom: 10px;
+      animation: fadeIn 0.3s ease;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .msg .name {
+      color: #667eea;
+      font-weight: 600;
+      font-size: 14px;
+      margin-bottom: 4px;
+      display: block;
+    }
+
+    .msg .text {
+      color: #333;
+      font-size: 15px;
+      line-height: 1.5;
+      word-wrap: break-word;
+    }
+
+    .message-input-section {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    #messageInput {
+      flex: 1;
+      padding: 14px 15px;
+      border: 2px solid #e0e0e0;
+      border-radius: 12px;
+      font-size: 15px;
+      transition: all 0.3s;
+      outline: none;
+    }
+
+    #messageInput:focus {
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 14px 28px;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    .empty-state {
+      text-align: center;
+      color: #999;
+      padding: 40px 20px;
+    }
+
+    .empty-state span {
+      font-size: 48px;
+      display: block;
       margin-bottom: 10px;
     }
-    .msg {
-      margin-bottom: 8px;
-    }
-    .name {
-      font-weight: bold;
-    }
-    input {
-      width: 100%;
-      padding: 8px;
-      margin-bottom: 6px;
-    }
-    button {
-      padding: 8px;
-      width: 100%;
+
+    @media (max-width: 500px) {
+      .chat-container {
+        border-radius: 0;
+      }
+
+      #messages {
+        height: 350px;
+      }
     }
   </style>
 </head>
 <body>
 
-<div class="chat-box">
-  <h3>แชทไม่ระบุตัวตน</h3>
+<div class="chat-container">
+  <div class="chat-header">
+    <h3>💬 แชทไม่ระบุตัวตน</h3>
+    <p>พูดคุยกับทุกคนได้อย่างอิสระ</p>
+  </div>
 
-  <!-- ตั้งชื่อเล่น -->
-  <input type="text" id="nicknameInput" placeholder="ตั้งชื่อเล่นของคุณ">
+  <div class="chat-body">
+    <div class="nickname-section">
+      <label>👤 ชื่อเล่นของคุณ</label>
+      <div class="input-wrapper">
+        <input type="text" id="nicknameInput" placeholder="ใส่ชื่อเล่นของคุณ" maxlength="20">
+      </div>
+    </div>
 
-  <!-- กล่องแชท -->
-  <div id="messages"></div>
+    <div id="messages">
+      <div class="empty-state">
+        <span>💭</span>
+        <p>ยังไม่มีข้อความ<br>เริ่มสนทนากันเลย!</p>
+      </div>
+    </div>
 
-  <!-- พิมพ์ข้อความ -->
-  <input type="text" id="messageInput" placeholder="พิมพ์ข้อความ..." />
-  <button onclick="sendMessage()">ส่ง</button>
+    <div class="message-input-section">
+      <input type="text" id="messageInput" placeholder="พิมพ์ข้อความ..." />
+      <button onclick="sendMessage()">ส่ง</button>
+    </div>
+  </div>
 </div>
 
 <script>
-  // Firebase config (ของคุณ)
+  // Firebase config
   const firebaseConfig = {
     apiKey: "AIzaSyAU9hjYfn0sdAt0IXCTZ6CRbSV4TR6w5kY",
     authDomain: "su102-2cf53.firebaseapp.com",
@@ -82,54 +288,81 @@
   const messageRef = db.collection("messages");
 
   let userId = "";
-  let nickname = localStorage.getItem("nickname") || "";
+  let nickname = "";
 
-  document.getElementById("nicknameInput").value = nickname;
-
-  // 🔹 Login แบบไม่ระบุตัวตน
+  // Login แบบไม่ระบุตัวตน
   auth.signInAnonymously().then((result) => {
     userId = result.user.uid;
   });
 
-  // 🔹 ฟังข้อความแบบเรียลไทม์
+  // ฟังข้อความแบบเรียลไทม์
   messageRef
     .orderBy("timestamp")
     .onSnapshot(snapshot => {
       const messagesDiv = document.getElementById("messages");
       messagesDiv.innerHTML = "";
+      
+      if (snapshot.empty) {
+        messagesDiv.innerHTML = `
+          <div class="empty-state">
+            <span>💭</span>
+            <p>ยังไม่มีข้อความ<br>เริ่มสนทนากันเลย!</p>
+          </div>
+        `;
+        return;
+      }
+
       snapshot.forEach(doc => {
         const data = doc.data();
         const div = document.createElement("div");
         div.className = "msg";
-        div.innerHTML = `<span class="name">${data.nickname || "ไม่ระบุชื่อ"}:</span> ${data.text}`;
+        div.innerHTML = `
+          <span class="name">${data.nickname || "ไม่ระบุชื่อ"}</span>
+          <div class="text">${escapeHtml(data.text)}</div>
+        `;
         messagesDiv.appendChild(div);
       });
       messagesDiv.scrollTop = messagesDiv.scrollHeight;
     });
 
-  // 🔹 ส่งข้อความ
+  // ส่งข้อความ
   function sendMessage() {
     const textInput = document.getElementById("messageInput");
     const nickInput = document.getElementById("nicknameInput");
 
     if (nickInput.value.trim() === "") {
-      alert("กรุณาตั้งชื่อเล่นก่อน");
+      alert("⚠️ กรุณาตั้งชื่อเล่นก่อน");
+      nickInput.focus();
       return;
     }
 
     if (textInput.value.trim() === "") return;
 
     nickname = nickInput.value.trim();
-    localStorage.setItem("nickname", nickname);
 
     messageRef.add({
-      text: textInput.value,
+      text: textInput.value.trim(),
       nickname: nickname,
       userId: userId,
       timestamp: firebase.firestore.FieldValue.serverTimestamp()
     });
 
     textInput.value = "";
+    textInput.focus();
+  }
+
+  // กด Enter เพื่อส่งข้อความ
+  document.getElementById("messageInput").addEventListener("keypress", (e) => {
+    if (e.key === "Enter") {
+      sendMessage();
+    }
+  });
+
+  // ป้องกัน XSS
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
   }
 </script>
 
