@@ -52,13 +52,10 @@
 <div class="chat-box">
   <h3>แชทไม่ระบุตัวตน</h3>
 
-  <!-- แสดงจำนวนคนออนไลน์ -->
-  <p>🟢 ออนไลน์: <span id="onlineCount">0</span> คน</p>
-
   <!-- ตั้งชื่อเล่น -->
   <input type="text" id="nicknameInput" placeholder="ตั้งชื่อเล่นของคุณ">
 
-  <!-- กล่องข้อความ -->
+  <!-- กล่องแชท -->
   <div id="messages"></div>
 
   <!-- พิมพ์ข้อความ -->
@@ -82,8 +79,6 @@
 
   const auth = firebase.auth();
   const db = firebase.firestore();
-
-  const onlineRef = db.collection("onlineUsers");
   const messageRef = db.collection("messages");
 
   let userId = "";
@@ -91,27 +86,12 @@
 
   document.getElementById("nicknameInput").value = nickname;
 
-  // 🔹 Login แบบไม่ระบุตัวตน + ออนไลน์
+  // 🔹 Login แบบไม่ระบุตัวตน
   auth.signInAnonymously().then((result) => {
     userId = result.user.uid;
-
-    // เพิ่มสถานะออนไลน์
-    onlineRef.doc(userId).set({
-      joinedAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
-
-    // ปิดเว็บ = ออฟไลน์
-    window.addEventListener("beforeunload", () => {
-      onlineRef.doc(userId).delete();
-    });
   });
 
-  // 🔹 ฟังจำนวนคนออนไลน์
-  onlineRef.onSnapshot(snapshot => {
-    document.getElementById("onlineCount").textContent = snapshot.size;
-  });
-
-  // 🔹 ฟังข้อความแชท
+  // 🔹 ฟังข้อความแบบเรียลไทม์
   messageRef
     .orderBy("timestamp")
     .onSnapshot(snapshot => {
