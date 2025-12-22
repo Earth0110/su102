@@ -1,331 +1,120 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GlowFlow - Your Period Companion</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, query, onSnapshot, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // --- Firebase Configuration ---
-        const firebaseConfig = JSON.parse(__firebase_config);
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'glow-flow-app';
-
-        // --- State Management ---
-        let currentUser = null;
-        let selectedDate = null;
-        let currentViewDate = new Date();
-
-        // --- UI Logic ---
-        window.addEventListener('DOMContentLoaded', () => {
-            const cycleResult = document.getElementById('cycleResult');
-            const chatMessages = document.getElementById('chatMessages');
-            const messageInput = document.getElementById('messageInput');
-            const sendBtn = document.getElementById('sendBtn');
-            const symptomGrid = document.getElementById('symptomGrid');
-            const remedyBox = document.getElementById('remedyBox');
-            
-            // Calendar Elements
-            const calendarDays = document.getElementById('calendarDays');
-            const currentMonthYear = document.getElementById('currentMonthYear');
-            const prevMonthBtn = document.getElementById('prevMonth');
-            const nextMonthBtn = document.getElementById('nextMonth');
-
-            // 1. Custom Calendar Logic
-            function renderCalendar() {
-                calendarDays.innerHTML = '';
-                const year = currentViewDate.getFullYear();
-                const month = currentViewDate.getMonth();
-                
-                const firstDay = new Date(year, month, 1).getDay();
-                const lastDate = new Date(year, month + 1, 0).getDate();
-                
-                const monthNames = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
-                currentMonthYear.innerText = `${monthNames[month]} ${year + 543}`;
-
-                // Empty slots for previous month
-                for (let i = 0; i < firstDay; i++) {
-                    const empty = document.createElement('div');
-                    calendarDays.appendChild(empty);
-                }
-
-                // Days of current month
-                for (let day = 1; day <= lastDate; day++) {
-                    const dayEl = document.createElement('button');
-                    dayEl.innerText = day;
-                    dayEl.className = "h-10 w-10 flex items-center justify-center rounded-full text-sm font-medium transition-all hover:bg-pink-100";
-                    
-                    const dateObj = new Date(year, month, day);
-                    if (selectedDate && dateObj.toDateString() === selectedDate.toDateString()) {
-                        dayEl.classList.add('bg-pink-500', 'text-white', 'hover:bg-pink-600');
-                    } else {
-                        dayEl.classList.add('text-gray-700');
-                    }
-
-                    dayEl.onclick = () => {
-                        selectedDate = dateObj;
-                        renderCalendar();
-                        calculateNextPeriod();
-                    };
-                    calendarDays.appendChild(dayEl);
-                }
-            }
-
-            function calculateNextPeriod() {
-                if (!selectedDate) return;
-                const nextDate = new Date(selectedDate);
-                nextDate.setDate(selectedDate.getDate() + 28);
-
-                const options = { year: 'numeric', month: 'long', day: 'numeric' };
-                cycleResult.innerHTML = `
-                    <div class="p-4 bg-pink-50 rounded-2xl border border-pink-100 mt-4">
-                        <p class="text-pink-600 font-medium text-sm">รอบเดือนครั้งถัดไปของคุณประมาณวันที่:</p>
-                        <p class="text-pink-800 text-2xl font-bold">${nextDate.toLocaleDateString('th-TH', options)}</p>
-                    </div>
-                `;
-            }
-
-            prevMonthBtn.onclick = () => {
-                currentViewDate.setMonth(currentViewDate.getMonth() - 1);
-                renderCalendar();
-            };
-
-            nextMonthBtn.onclick = () => {
-                currentViewDate.setMonth(currentViewDate.getMonth() + 1);
-                renderCalendar();
-            };
-
-            renderCalendar();
-
-            // 2. Symptom Checker Logic
-            const symptoms = [
-                { id: 'cramp', icon: '😫', label: 'ปวดท้อง', remedy: 'ดื่มน้ำอุ่น ใช้ถุงน้ำร้อนประคบ หรือออกกำลังกายเบาๆ เช่น โยคะ' },
-                { id: 'acne', icon: '✨', label: 'สิวขึ้น', remedy: 'ล้างหน้าให้สะอาด เลี่ยงของทอดพักผ่อนให้เพียงพอ' },
-                { id: 'mood', icon: '☁️', label: 'อารมณ์แปรปรวน', remedy: 'ทำสมาธิ ฟังเพลงโปรด หรือทานดาร์กช็อกโกแลตช่วยได้' },
-                { id: 'bloat', icon: '🎈', label: 'ตัวบวม', remedy: 'ลดการทานเค็ม (โซเดียม) และดื่มน้ำให้มากขึ้นเพื่อขับน้ำส่วนเกิน' },
-                { id: 'tired', icon: '😴', label: 'เพลีย/ง่วง', remedy: 'งีบหลับสั้นๆ 15-20 นาที และเน้นทานอาหารที่มีธาตุเหล็ก' }
-            ];
-
-            const selectedSymptoms = new Set();
-
-            symptoms.forEach(s => {
-                const btn = document.createElement('button');
-                btn.className = "flex flex-col items-center p-4 bg-white border-2 border-transparent rounded-2xl shadow-sm hover:border-pink-300 transition-all duration-300";
-                btn.innerHTML = `<span class="text-3xl mb-2">${s.icon}</span><span class="text-sm text-gray-600 font-medium">${s.label}</span>`;
-                btn.onclick = () => {
-                    btn.classList.toggle('border-pink-400');
-                    btn.classList.toggle('bg-pink-50');
-                    if (selectedSymptoms.has(s.id)) {
-                        selectedSymptoms.delete(s.id);
-                    } else {
-                        selectedSymptoms.add(s.id);
-                    }
-                    updateRemedies();
-                };
-                symptomGrid.appendChild(btn);
-            });
-
-            function updateRemedies() {
-                if (selectedSymptoms.size === 0) {
-                    remedyBox.innerHTML = '<p class="text-gray-400 text-center py-4 italic">เลือกอาการเพื่อดูคำแนะนำ</p>';
-                    return;
-                }
-                let html = '<ul class="space-y-3">';
-                symptoms.filter(s => selectedSymptoms.has(s.id)).forEach(s => {
-                    html += `
-                        <li class="flex gap-3 items-start bg-white p-3 rounded-xl shadow-sm">
-                            <span class="text-lg">${s.icon}</span>
-                            <div>
-                                <p class="font-bold text-gray-800 text-sm">${s.label}</p>
-                                <p class="text-gray-600 text-xs">${s.remedy}</p>
-                            </div>
-                        </li>`;
-                });
-                html += '</ul>';
-                remedyBox.innerHTML = html;
-            }
-
-            // 3. Anonymous Chat (Firebase)
-            const initChat = async () => {
-                try {
-                    await signInAnonymously(auth);
-                } catch (err) {
-                    console.error("Auth Error", err);
-                }
-
-                onAuthStateChanged(auth, (user) => {
-                    if (user) {
-                        currentUser = user;
-                        subscribeToMessages();
-                    }
-                });
-            };
-
-            const subscribeToMessages = () => {
-                const q = query(
-                    collection(db, 'artifacts', appId, 'public', 'data', 'chat_messages'),
-                    orderBy('createdAt', 'asc')
-                );
-
-                onSnapshot(q, (snapshot) => {
-                    chatMessages.innerHTML = '';
-                    snapshot.forEach((doc) => {
-                        const msg = doc.data();
-                        const isMine = msg.uid === currentUser?.uid;
-                        const div = document.createElement('div');
-                        div.className = `flex ${isMine ? 'justify-end' : 'justify-start'} mb-2`;
-                        div.innerHTML = `
-                            <div class="max-w-[80%] px-4 py-2 rounded-2xl text-sm ${
-                                isMine ? 'bg-pink-500 text-white rounded-tr-none' : 'bg-gray-100 text-gray-800 rounded-tl-none'
-                            }">
-                                ${msg.text}
-                                <div class="text-[10px] opacity-70 mt-1">${isMine ? 'You' : 'Friend'}</div>
-                            </div>
-                        `;
-                        chatMessages.appendChild(div);
-                    });
-                    chatMessages.scrollTop = chatMessages.scrollHeight;
-                }, (error) => {
-                    console.error("Firestore Error", error);
-                });
-            };
-
-            sendBtn.onclick = async () => {
-                const text = messageInput.value.trim();
-                if (!text || !currentUser) return;
-
-                messageInput.value = '';
-                try {
-                    await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'chat_messages'), {
-                        text,
-                        uid: currentUser.uid,
-                        createdAt: serverTimestamp()
-                    });
-                } catch (err) {
-                    console.error("Send Error", err);
-                }
-            };
-
-            messageInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') sendBtn.click();
-            });
-
-            initChat();
-        });
-    </script>
-    <style>
-        body {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            background-color: #FFF9FA;
-            color: #2D2D2D;
-        }
-        .glass-card {
-            background: rgba(255, 255, 255, 0.8);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-        }
-        .no-scrollbar::-webkit-scrollbar {
-            display: none;
-        }
-        .calendar-grid {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            gap: 4px;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cycle Care</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; background:#f7f7f7; margin:0; color:#222; }
+    .container { max-width:480px; margin:auto; padding:20px; }
+    h1 { font-size:1.4rem; font-weight:600; }
+    .card { background:#fff; border-radius:16px; padding:16px; margin-bottom:16px; box-shadow:0 8px 24px rgba(0,0,0,0.05); }
+    label { font-size:0.85rem; }
+    input, button { width:100%; padding:10px; margin-top:8px; border-radius:12px; border:1px solid #ddd; }
+    button { background:#111; color:#fff; border:none; cursor:pointer; }
+    .tag { display:inline-block; padding:6px 10px; border-radius:20px; border:1px solid #ccc; margin:4px; cursor:pointer; font-size:0.8rem; }
+    .tag.active { background:#111; color:#fff; }
+    #chat { height:200px; overflow-y:auto; background:#fafafa; padding:10px; border-radius:12px; margin-bottom:8px; }
+    .msg { font-size:0.8rem; margin-bottom:4px; }
+  </style>
 </head>
-<body class="p-4 md:p-8 flex flex-col items-center">
+<body>
+  <div class="container">
+    <h1>Cycle Care</h1>
 
-    <header class="w-full max-w-lg mb-8 text-center">
-        <h1 class="text-4xl font-extrabold text-pink-500 mb-2">GlowFlow ✨</h1>
-        <p class="text-gray-500 font-medium">Be your best self, every day.</p>
-    </header>
+    <!-- 1. Period Calculator -->
+    <div class="card">
+      <label>เลือกวันแรกของประจำเดือน</label>
+      <input type="date" id="periodDate">
+      <button onclick="calcNext()">คำนวณรอบถัดไป</button>
+      <p id="result"></p>
+    </div>
 
-    <main class="w-full max-w-lg space-y-6">
+    <!-- 2. Symptom & Food Advice -->
+    <div class="card">
+      <label>อาการที่เป็นอยู่ (เลือกได้หลายข้อ)</label><br>
+      <div id="symptoms">
+        <span class="tag" onclick="toggle(this,'ปวดท้อง')">ปวดท้อง</span>
+        <span class="tag" onclick="toggle(this,'อ่อนเพลีย')">อ่อนเพลีย</span>
+        <span class="tag" onclick="toggle(this,'บวมน้ำ')">บวมน้ำ</span>
+        <span class="tag" onclick="toggle(this,'ปวดหัว')">ปวดหัว</span>
+      </div>
+      <button onclick="showAdvice()">ดูคำแนะนำ</button>
+      <ul id="advice"></ul>
+    </div>
 
-        <!-- 1. Custom Calendar Section -->
-        <section class="glass-card rounded-[2.5rem] p-6 shadow-xl shadow-pink-100/50">
-            <div class="flex items-center gap-3 mb-6">
-                <div class="p-2 bg-pink-100 rounded-lg text-pink-500">🗓️</div>
-                <h2 class="text-xl font-bold text-gray-800">วันแรกของรอบเดือน</h2>
-            </div>
-            
-            <div class="calendar-container bg-white rounded-3xl p-4 shadow-sm border border-pink-50">
-                <div class="flex justify-between items-center mb-6">
-                    <button id="prevMonth" class="p-2 hover:bg-pink-50 rounded-full text-pink-500 transition-colors">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
-                    </button>
-                    <h3 id="currentMonthYear" class="font-bold text-gray-700"></h3>
-                    <button id="nextMonth" class="p-2 hover:bg-pink-50 rounded-full text-pink-500 transition-colors">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
-                    </button>
-                </div>
-                <div class="calendar-grid text-center mb-2">
-                    <div class="text-xs font-bold text-gray-300">อา</div>
-                    <div class="text-xs font-bold text-gray-300">จ</div>
-                    <div class="text-xs font-bold text-gray-300">อ</div>
-                    <div class="text-xs font-bold text-gray-300">พ</div>
-                    <div class="text-xs font-bold text-gray-300">พฤ</div>
-                    <div class="text-xs font-bold text-gray-300">ศ</div>
-                    <div class="text-xs font-bold text-gray-300">ส</div>
-                </div>
-                <div id="calendarDays" class="calendar-grid">
-                    <!-- Days will be injected here -->
-                </div>
-            </div>
+    <!-- 3. Anonymous Chat -->
+    <div class="card">
+      <label>แชทไม่ระบุตัวตน</label>
+      <div id="chat"></div>
+      <input id="msgInput" placeholder="พิมพ์ข้อความ..." />
+      <button onclick="sendMsg()">ส่ง</button>
+    </div>
+  </div>
 
-            <div id="cycleResult">
-                <p class="text-gray-400 text-sm italic text-center py-4">กรุณาเลือกวันที่บนปฏิทิน</p>
-            </div>
-        </section>
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
-        <!-- 2. Symptom Checker Section -->
-        <section class="glass-card rounded-[2.5rem] p-6 shadow-xl shadow-pink-100/50">
-            <div class="flex items-center gap-3 mb-4">
-                <div class="p-2 bg-blue-100 rounded-lg text-blue-500">🌿</div>
-                <h2 class="text-xl font-bold text-gray-800">อาการวันนี้</h2>
-            </div>
-            <div id="symptomGrid" class="grid grid-cols-3 gap-3 mb-6">
-                <!-- Symptoms buttons will be injected here -->
-            </div>
-            <div class="bg-blue-50/50 rounded-2xl p-4 border border-blue-50">
-                <h3 class="text-sm font-bold text-blue-800 mb-2 uppercase tracking-wider">คำแนะนำการบรรเทา</h3>
-                <div id="remedyBox"></div>
-            </div>
-        </section>
+  <script>
+    // Firebase config (ใส่ของคุณเอง)
+    const firebaseConfig = {
+        apiKey: "AIzaSyAU9hjYfn0sdAt0IXCTZ6CRbSV4TR6w5kY",
+        authDomain: "su102-2cf53.firebaseapp.com",
+        projectId: "su102-2cf53",
+        storageBucket: "su102-2cf53.firebasestorage.app",
+        messagingSenderId: "340491447482",
+        appId: "1:340491447482:web:2d9efb4cc2774125b26683"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
 
-        <!-- 3. Anonymous Chat Section -->
-        <section class="glass-card rounded-[2.5rem] p-6 shadow-xl shadow-pink-100/50 h-[500px] flex flex-col">
-            <div class="flex items-center gap-3 mb-4">
-                <div class="p-2 bg-purple-100 rounded-lg text-purple-500">💬</div>
-                <h2 class="text-xl font-bold text-gray-800">คุยกันแบบสุ่ม</h2>
-            </div>
-            
-            <div id="chatMessages" class="flex-1 overflow-y-auto mb-4 space-y-2 no-scrollbar px-1">
-                <p class="text-center text-gray-400 text-sm mt-10">กำลังโหลดแชท...</p>
-            </div>
+    // 1. Period calculator
+    function calcNext() {
+      const d = new Date(document.getElementById('periodDate').value);
+      d.setDate(d.getDate() + 28);
+      document.getElementById('result').innerText = 'รอบถัดไปประมาณ: ' + d.toLocaleDateString('th-TH');
+    }
 
-            <div class="relative flex items-center gap-2">
-                <input type="text" id="messageInput" placeholder="พิมพ์ความรู้สึกตอนนี้..." 
-                    class="w-full py-3 px-5 bg-gray-50 border-none rounded-full focus:ring-2 focus:ring-purple-300 outline-none text-sm shadow-inner">
-                <button id="sendBtn" class="bg-purple-500 hover:bg-purple-600 text-white p-3 rounded-full transition-transform active:scale-90 shadow-lg shadow-purple-200">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
-                </button>
-            </div>
-        </section>
+    // 2. Symptoms
+    let selected = [];
+    const tips = {
+      'ปวดท้อง':'ดื่มน้ำอุ่น หลีกเลี่ยงของมัน',
+      'อ่อนเพลีย':'พักผ่อน กินโปรตีน',
+      'บวมน้ำ':'ลดเค็ม ดื่มน้ำมากขึ้น',
+      'ปวดหัว':'หลีกเลี่ยงคาเฟอีน นอนให้พอ'
+    };
+    function toggle(el,val){
+      el.classList.toggle('active');
+      if(selected.includes(val)) selected = selected.filter(v=>v!==val);
+      else selected.push(val);
+    }
+    function showAdvice(){
+      const ul = document.getElementById('advice');
+      ul.innerHTML='';
+      selected.forEach(s=>{
+        const li=document.createElement('li');
+        li.innerText = s + ' : ' + tips[s];
+        ul.appendChild(li);
+      })
+    }
 
-    </main>
-
-    <footer class="mt-12 text-gray-400 text-xs text-center pb-8">
-        <p>&copy; 2025 GlowFlow. Stay Glowing! ✨</p>
-    </footer>
-
+    // 3. Chat
+    const chatRef = db.ref('chat');
+    chatRef.limitToLast(50).on('child_added', snap => {
+      const div = document.createElement('div');
+      div.className='msg';
+      div.innerText = snap.val().text;
+      document.getElementById('chat').appendChild(div);
+    });
+    function sendMsg(){
+      const input = document.getElementById('msgInput');
+      if(input.value.trim()!==''){
+        chatRef.push({ text: input.value });
+        input.value='';
+      }
+    }
+  </script>
 </body>
 </html>
