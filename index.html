@@ -1,120 +1,111 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Cycle Care</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+  <meta charset="UTF-8">
+  <title>Anonymous Chat</title>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
   <style>
-    body { font-family: 'Inter', sans-serif; background:#f7f7f7; margin:0; color:#222; }
-    .container { max-width:480px; margin:auto; padding:20px; }
-    h1 { font-size:1.4rem; font-weight:600; }
-    .card { background:#fff; border-radius:16px; padding:16px; margin-bottom:16px; box-shadow:0 8px 24px rgba(0,0,0,0.05); }
-    label { font-size:0.85rem; }
-    input, button { width:100%; padding:10px; margin-top:8px; border-radius:12px; border:1px solid #ddd; }
-    button { background:#111; color:#fff; border:none; cursor:pointer; }
-    .tag { display:inline-block; padding:6px 10px; border-radius:20px; border:1px solid #ccc; margin:4px; cursor:pointer; font-size:0.8rem; }
-    .tag.active { background:#111; color:#fff; }
-    #chat { height:200px; overflow-y:auto; background:#fafafa; padding:10px; border-radius:12px; margin-bottom:8px; }
-    .msg { font-size:0.8rem; margin-bottom:4px; }
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      display: flex;
+      justify-content: center;
+      margin-top: 40px;
+    }
+    .chat-box {
+      width: 400px;
+      background: #fff;
+      padding: 15px;
+      border-radius: 8px;
+    }
+    #messages {
+      height: 300px;
+      overflow-y: auto;
+      border: 1px solid #ccc;
+      padding: 10px;
+      margin-bottom: 10px;
+    }
+    .msg {
+      margin-bottom: 8px;
+    }
+    input {
+      width: 75%;
+      padding: 8px;
+    }
+    button {
+      padding: 8px 12px;
+    }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>Cycle Care</h1>
 
-    <!-- 1. Period Calculator -->
-    <div class="card">
-      <label>เลือกวันแรกของประจำเดือน</label>
-      <input type="date" id="periodDate">
-      <button onclick="calcNext()">คำนวณรอบถัดไป</button>
-      <p id="result"></p>
-    </div>
+<div class="chat-box">
+  <h3>แชทไม่ระบุตัวตน</h3>
+  <div id="messages"></div>
+  <input type="text" id="messageInput" placeholder="พิมพ์ข้อความ..." />
+  <button onclick="sendMessage()">ส่ง</button>
+</div>
 
-    <!-- 2. Symptom & Food Advice -->
-    <div class="card">
-      <label>อาการที่เป็นอยู่ (เลือกได้หลายข้อ)</label><br>
-      <div id="symptoms">
-        <span class="tag" onclick="toggle(this,'ปวดท้อง')">ปวดท้อง</span>
-        <span class="tag" onclick="toggle(this,'อ่อนเพลีย')">อ่อนเพลีย</span>
-        <span class="tag" onclick="toggle(this,'บวมน้ำ')">บวมน้ำ</span>
-        <span class="tag" onclick="toggle(this,'ปวดหัว')">ปวดหัว</span>
-      </div>
-      <button onclick="showAdvice()">ดูคำแนะนำ</button>
-      <ul id="advice"></ul>
-    </div>
+<script>
+  // 🔹 ใส่ firebaseConfig ของคุณตรงนี้
+  const firebaseConfig = {
+    apiKey: "AIzaSyAU9hjYfn0sdAt0IXCTZ6CRbSV4TR6w5kY",
+    authDomain: "su102-2cf53.firebaseapp.com",
+    databaseURL: "https://su102-2cf53-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "su102-2cf53",
+    storageBucket: "su102-2cf53.firebasestorage.app",
+    messagingSenderId: "340491447482",
+    appId: "1:340491447482:web:2d9efb4cc2774125b26683"
+  };
 
-    <!-- 3. Anonymous Chat -->
-    <div class="card">
-      <label>แชทไม่ระบุตัวตน</label>
-      <div id="chat"></div>
-      <input id="msgInput" placeholder="พิมพ์ข้อความ..." />
-      <button onclick="sendMsg()">ส่ง</button>
-    </div>
-  </div>
+  firebase.initializeApp(firebaseConfig);
 
-  <!-- Firebase -->
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  const auth = firebase.auth();
+  const db = firebase.firestore();
 
-  <script>
-    // Firebase config (ใส่ของคุณเอง)
-    const firebaseConfig = {
-        apiKey: "AIzaSyAU9hjYfn0sdAt0IXCTZ6CRbSV4TR6w5kY",
-        authDomain: "su102-2cf53.firebaseapp.com",
-        projectId: "su102-2cf53",
-        storageBucket: "su102-2cf53.firebasestorage.app",
-        messagingSenderId: "340491447482",
-        appId: "1:340491447482:web:2d9efb4cc2774125b26683"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
+  let userId = "";
 
-    // 1. Period calculator
-    function calcNext() {
-      const d = new Date(document.getElementById('periodDate').value);
-      d.setDate(d.getDate() + 28);
-      document.getElementById('result').innerText = 'รอบถัดไปประมาณ: ' + d.toLocaleDateString('th-TH');
-    }
-
-    // 2. Symptoms
-    let selected = [];
-    const tips = {
-      'ปวดท้อง':'ดื่มน้ำอุ่น หลีกเลี่ยงของมัน',
-      'อ่อนเพลีย':'พักผ่อน กินโปรตีน',
-      'บวมน้ำ':'ลดเค็ม ดื่มน้ำมากขึ้น',
-      'ปวดหัว':'หลีกเลี่ยงคาเฟอีน นอนให้พอ'
-    };
-    function toggle(el,val){
-      el.classList.toggle('active');
-      if(selected.includes(val)) selected = selected.filter(v=>v!==val);
-      else selected.push(val);
-    }
-    function showAdvice(){
-      const ul = document.getElementById('advice');
-      ul.innerHTML='';
-      selected.forEach(s=>{
-        const li=document.createElement('li');
-        li.innerText = s + ' : ' + tips[s];
-        ul.appendChild(li);
-      })
-    }
-
-    // 3. Chat
-    const chatRef = db.ref('chat');
-    chatRef.limitToLast(50).on('child_added', snap => {
-      const div = document.createElement('div');
-      div.className='msg';
-      div.innerText = snap.val().text;
-      document.getElementById('chat').appendChild(div);
+  // 🔹 Login แบบไม่ระบุตัวตน
+  auth.signInAnonymously()
+    .then((result) => {
+      userId = result.user.uid;
     });
-    function sendMsg(){
-      const input = document.getElementById('msgInput');
-      if(input.value.trim()!==''){
-        chatRef.push({ text: input.value });
-        input.value='';
-      }
-    }
-  </script>
+
+  // 🔹 ฟังข้อความแบบเรียลไทม์
+  db.collection("messages")
+    .orderBy("timestamp")
+    .onSnapshot(snapshot => {
+      const messagesDiv = document.getElementById("messages");
+      messagesDiv.innerHTML = "";
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        const div = document.createElement("div");
+        div.className = "msg";
+        div.textContent = "ไม่ระบุชื่อ: " + data.text;
+        messagesDiv.appendChild(div);
+      });
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    });
+
+  // 🔹 ส่งข้อความ
+  function sendMessage() {
+    const input = document.getElementById("messageInput");
+    if (input.value.trim() === "") return;
+
+    db.collection("messages").add({
+      text: input.value,
+      userId: userId,
+      timestamp: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    input.value = "";
+  }
+</script>
+
 </body>
 </html>
