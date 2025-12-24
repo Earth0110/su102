@@ -8,12 +8,12 @@
   <!-- Google Fonts: Prompt -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
   <!-- Phosphor Icons -->
   <script src="https://unpkg.com/@phosphor-icons/web"></script>
 
-  <!-- Firebase SDK (ใช้เวอร์ชันเดิมที่ผู้ใช้ให้มา เพื่อความเข้ากันได้กับโปรเจกต์เดิม) -->
+  <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
@@ -21,35 +21,31 @@
   <style>
     :root {
       --primary-gradient: linear-gradient(135deg, #FF9A9E 0%, #FECFEF 99%, #FECFEF 100%);
-      --bg-gradient: linear-gradient(120deg, #fdfbfb 0%, #ebedee 100%); /* หรือใช้สีพาสเทล */
+      --bg-gradient: linear-gradient(120deg, #fdfbfb 0%, #ebedee 100%);
       --accent-color: #ff7eb3;
       --accent-hover: #ff5d9e;
       --chat-bg-self: #ff7eb3;
       --chat-text-self: #ffffff;
       --chat-bg-other: #ffffff;
       --chat-text-other: #4a4a4a;
+      --calendar-selected: #ff7eb3;
+      --calendar-predicted: #a18cd1;
     }
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     body {
       font-family: 'Prompt', sans-serif;
-      background: #ffe6fa; /* Fallback */
-      background-image: 
-        radial-gradient(at 0% 0%, hsla(253,16%,7%,1) 0, transparent 50%), 
-        radial-gradient(at 50% 0%, hsla(225,39%,30%,1) 0, transparent 50%), 
-        radial-gradient(at 100% 0%, hsla(339,49%,30%,1) 0, transparent 50%);
-      background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%);
-      /* พื้นหลังแบบ Soft Pastel */
       background: linear-gradient(180deg, #FFFFFF 0%, #FFE2E2 100%);
       min-height: 100vh;
       display: flex;
       justify-content: center;
       align-items: center;
-      overflow: hidden; /* ป้องกัน scroll ของ body */
+      overflow: hidden;
+      position: relative;
     }
 
-    /* พื้นหลังตกแต่ง (Background Blobs) */
+    /* --- Background Blobs (คงเดิม) --- */
     .blob {
       position: absolute;
       border-radius: 50%;
@@ -68,26 +64,139 @@
       100% { transform: translate(0, 0) scale(1); }
     }
 
-    .chat-container {
+    /* --- App Container Wrapper --- */
+    .app-wrapper {
       width: 100%;
       max-width: 450px;
-      height: 90vh; /* เต็มจอในแนวสูง */
+      height: 90vh;
       max-height: 800px;
+      position: relative;
+      /* เพื่อให้สลับหน้าได้ง่าย */
+    }
+
+    /* --- Shared Container Style --- */
+    .view-container {
+      width: 100%;
+      height: 100%;
       background: rgba(255, 255, 255, 0.75);
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
       border-radius: 30px;
       box-shadow: 0 20px 50px rgba(0,0,0,0.1);
       border: 1px solid rgba(255, 255, 255, 0.5);
-      display: flex;
+      display: none; /* ซ่อนไว้ก่อน */
       flex-direction: column;
       overflow: hidden;
-      position: relative;
+      animation: fadeIn 0.4s ease;
     }
 
-    /* Header */
+    .view-container.active {
+      display: flex;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: scale(0.98); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    /* --- Back Button --- */
+    .back-btn {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      z-index: 20;
+      background: rgba(255,255,255,0.8);
+      border: none;
+      border-radius: 50%;
+      width: 35px;
+      height: 35px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      color: #555;
+      transition: all 0.2s;
+    }
+    .back-btn:hover { background: #fff; transform: scale(1.1); }
+
+    /* --- 1. Main Menu Styles --- */
+    .menu-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 40px;
+      gap: 20px;
+      text-align: center;
+    }
+    
+    .menu-logo {
+      font-size: 60px;
+      color: var(--accent-color);
+      margin-bottom: 10px;
+      filter: drop-shadow(0 4px 6px rgba(255,126,179,0.3));
+    }
+
+    .menu-title {
+      font-size: 24px;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 5px;
+    }
+    .menu-subtitle {
+      font-size: 14px;
+      color: #777;
+      margin-bottom: 30px;
+    }
+
+    .menu-btn {
+      width: 100%;
+      padding: 18px;
+      border: none;
+      border-radius: 20px;
+      background: white;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      transition: all 0.3s;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .menu-btn:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    }
+    
+    .menu-btn.btn-chat { border-left: 6px solid #ff9a9e; }
+    .menu-btn.btn-calendar { border-left: 6px solid #a18cd1; }
+
+    .btn-icon {
+      width: 50px;
+      height: 50px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      color: white;
+    }
+    .btn-chat .btn-icon { background: linear-gradient(135deg, #ff9a9e, #ff7eb3); }
+    .btn-calendar .btn-icon { background: linear-gradient(135deg, #a18cd1, #fbc2eb); }
+
+    .btn-text {
+      text-align: left;
+    }
+    .btn-text h4 { font-size: 16px; color: #444; margin-bottom: 2px; }
+    .btn-text p { font-size: 12px; color: #888; }
+
+    /* --- 2. Chat Styles (From Original) --- */
     .chat-header {
-      padding: 20px 25px;
+      padding: 20px 25px 20px 60px; /* เพิ่ม padding left หลบปุ่ม back */
       background: rgba(255, 255, 255, 0.8);
       border-bottom: 1px solid rgba(0,0,0,0.05);
       display: flex;
@@ -95,7 +204,6 @@
       gap: 15px;
       z-index: 10;
     }
-
     .header-icon {
       width: 45px;
       height: 45px;
@@ -107,19 +215,10 @@
       color: white;
       font-size: 24px;
       box-shadow: 0 4px 10px rgba(255, 126, 179, 0.3);
+      flex-shrink: 0;
     }
-
-    .header-info h3 {
-      font-size: 18px;
-      font-weight: 600;
-      color: #333;
-    }
-    .header-info p {
-      font-size: 12px;
-      color: #777;
-    }
-
-    /* Chat Body (Messages Area) */
+    .header-info h3 { font-size: 18px; font-weight: 600; color: #333; }
+    .header-info p { font-size: 12px; color: #777; }
     .chat-body {
       flex: 1;
       padding: 20px;
@@ -129,25 +228,19 @@
       gap: 12px;
       scroll-behavior: smooth;
     }
-    
-    /* Scrollbar styling */
     .chat-body::-webkit-scrollbar { width: 6px; }
     .chat-body::-webkit-scrollbar-track { background: transparent; }
     .chat-body::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 10px; }
-
-    /* Message Bubbles */
     .msg-wrapper {
       display: flex;
       flex-direction: column;
       max-width: 80%;
       animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     }
-
     @keyframes popIn {
       from { opacity: 0; transform: scale(0.9) translateY(10px); }
       to { opacity: 1; transform: scale(1) translateY(0); }
     }
-
     .msg-content {
       padding: 12px 16px;
       border-radius: 18px;
@@ -157,42 +250,17 @@
       word-wrap: break-word;
       box-shadow: 0 2px 5px rgba(0,0,0,0.05);
     }
-
-    .msg-name {
-      font-size: 10px;
-      margin-bottom: 4px;
-      margin-left: 4px;
-      color: #888;
-      font-weight: 500;
-    }
-
-    /* Left Side (Others) */
-    .left {
-      align-self: flex-start;
-    }
-    .left .msg-content {
-      background: var(--chat-bg-other);
-      color: var(--chat-text-other);
-      border-bottom-left-radius: 4px;
-    }
-
-    /* Right Side (Me) */
-    .right {
-      align-self: flex-end;
-    }
-    .right .msg-name {
-      text-align: right;
-      margin-right: 4px;
-    }
+    .msg-name { font-size: 10px; margin-bottom: 4px; margin-left: 4px; color: #888; font-weight: 500; }
+    .left { align-self: flex-start; }
+    .left .msg-content { background: var(--chat-bg-other); color: var(--chat-text-other); border-bottom-left-radius: 4px; }
+    .right { align-self: flex-end; }
+    .right .msg-name { text-align: right; margin-right: 4px; }
     .right .msg-content {
-      background: var(--chat-bg-self); /* Pink */
       background: linear-gradient(135deg, #ff9a9e 0%, #ff7eb3 100%);
       color: var(--chat-text-self);
       border-bottom-right-radius: 4px;
       box-shadow: 0 4px 10px rgba(255, 126, 179, 0.25);
     }
-
-    /* Controls Area (Bottom) */
     .chat-controls {
       padding: 15px 20px;
       background: rgba(255,255,255,0.9);
@@ -201,7 +269,6 @@
       flex-direction: column;
       gap: 10px;
     }
-
     .input-group {
       display: flex;
       align-items: center;
@@ -213,105 +280,178 @@
       box-shadow: 0 2px 10px rgba(0,0,0,0.03);
       transition: box-shadow 0.2s;
     }
-
-    .input-group:focus-within {
-      box-shadow: 0 4px 15px rgba(255, 126, 179, 0.15);
-      border-color: #ffcae0;
+    .input-group:focus-within { box-shadow: 0 4px 15px rgba(255, 126, 179, 0.15); border-color: #ffcae0; }
+    .nickname-input, .message-input {
+      width: 100%; border: none; outline: none; font-family: 'Prompt', sans-serif; background: transparent;
     }
-
-    .nickname-input {
-      width: 100%;
-      border: none;
-      outline: none;
-      font-family: 'Prompt', sans-serif;
-      font-size: 13px;
-      color: #555;
-      background: transparent;
-      padding: 8px 0;
-    }
-
-    .message-input {
-      flex: 1;
-      border: none;
-      outline: none;
-      font-family: 'Prompt', sans-serif;
-      font-size: 14px;
-      color: #333;
-      background: transparent;
-      padding: 8px 0;
-    }
-
+    .nickname-input { font-size: 13px; color: #555; padding: 8px 0; }
+    .message-input { flex: 1; font-size: 14px; color: #333; padding: 8px 0; }
     .send-btn {
-      width: 40px;
-      height: 40px;
+      width: 40px; height: 40px; border: none; border-radius: 50%; background: var(--accent-color); color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 18px; transition: all 0.2s; flex-shrink: 0;
+    }
+    .send-btn:hover { background: var(--accent-hover); transform: scale(1.05); }
+    .input-label { font-size: 11px; color: #aaa; margin-bottom: -5px; margin-left: 10px; font-weight: 500; text-transform: uppercase; }
+    .empty-state { text-align: center; color: #bbb; margin-top: 40%; display: flex; flex-direction: column; align-items: center; }
+    .empty-state i { font-size: 48px; margin-bottom: 15px; color: #ffdae9; }
+
+    /* --- 3. Calendar / Period Tracker Styles --- */
+    .calendar-container {
+      padding: 20px;
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    /* เพิ่ม style สำหรับคำอธิบาย */
+    .calendar-instruction {
+      text-align: center;
+      color: var(--accent-color);
+      font-size: 16px;
+      font-weight: 600;
+      margin-top: 40px; /* เว้นระยะจากด้านบน */
+      margin-bottom: 5px;
+    }
+    
+    .calendar-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      margin-top: 10px; /* ลดระยะลงเล็กน้อยเพื่อให้เข้ากับคำอธิบาย */
+    }
+    
+    .month-year {
+      font-size: 18px;
+      font-weight: 600;
+      color: #333;
+    }
+    
+    .calendar-nav-btn {
+      background: none;
       border: none;
-      border-radius: 50%;
-      background: var(--accent-color);
-      color: white;
+      color: #777;
+      font-size: 20px;
       cursor: pointer;
+      padding: 5px;
+    }
+
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+
+    .day-name {
+      text-align: center;
+      font-size: 12px;
+      color: #999;
+      margin-bottom: 5px;
+    }
+
+    .calendar-day {
+      height: 40px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 18px;
+      border-radius: 50%;
+      font-size: 14px;
+      color: #444;
+      cursor: pointer;
       transition: all 0.2s;
-      flex-shrink: 0;
+      position: relative;
     }
 
-    .send-btn:hover {
-      background: var(--accent-hover);
-      transform: scale(1.05);
+    .calendar-day:hover {
+      background: #f0f0f0;
+    }
+
+    .calendar-day.empty {
+      background: transparent;
+      cursor: default;
+    }
+
+    .calendar-day.selected {
+      background: var(--calendar-selected);
+      color: white;
+      box-shadow: 0 3px 8px rgba(255, 126, 179, 0.4);
     }
     
-    .send-btn:active {
-      transform: scale(0.95);
+    .calendar-day.predicted {
+      background: var(--calendar-predicted);
+      color: white;
+      box-shadow: 0 3px 8px rgba(161, 140, 209, 0.4);
     }
 
-    .divider {
-      height: 1px;
-      background: #eee;
-      margin: 0 10px;
+    .calendar-day.today {
+      border: 1px solid var(--accent-color);
+      color: var(--accent-color);
+      font-weight: 600;
     }
 
-    /* Label Styling */
-    .input-label {
-      font-size: 11px;
-      color: #aaa;
-      margin-bottom: -5px;
-      margin-left: 10px;
-      font-weight: 500;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
+    /* Info Card */
+    .tracker-info {
+      background: white;
+      border-radius: 20px;
+      padding: 20px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.03);
+      margin-top: auto;
     }
 
-    /* Empty State */
-    .empty-state {
-      text-align: center;
-      color: #bbb;
-      margin-top: 40%;
+    .info-header {
       display: flex;
-      flex-direction: column;
       align-items: center;
-    }
-    .empty-state i {
-      font-size: 48px;
+      gap: 10px;
       margin-bottom: 15px;
-      color: #ffdae9;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #eee;
     }
-    .empty-state p {
-      font-size: 14px;
-      line-height: 1.6;
+    .info-header i { color: var(--calendar-predicted); font-size: 20px; }
+    .info-header span { font-weight: 600; color: #555; }
+
+    .result-box {
+      text-align: center;
+    }
+    .result-label { font-size: 12px; color: #888; margin-bottom: 5px; }
+    .result-date { font-size: 20px; font-weight: 600; color: var(--calendar-predicted); }
+    .result-desc { font-size: 12px; color: #aaa; margin-top: 5px; }
+
+    .cycle-setting {
+      margin-top: 15px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      color: #777;
+    }
+    .cycle-input {
+      width: 50px;
+      padding: 4px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      text-align: center;
+      font-family: 'Prompt';
+      color: #555;
     }
 
-    /* Mobile Responsive */
+    /* Legend */
+    .legend {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      margin-top: 15px;
+    }
+    .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: #666; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; }
+    .dot.pink { background: var(--calendar-selected); }
+    .dot.purple { background: var(--calendar-predicted); }
+
     @media (max-width: 500px) {
-      .chat-container {
-        height: 100vh;
-        max-height: none;
-        width: 100%;
-        border-radius: 0;
-      }
+      .app-wrapper { height: 100vh; max-height: none; width: 100%; border-radius: 0; }
+      .view-container { border-radius: 0; }
       body { padding: 0; }
-      .blob { display: none; } /* ลดการทำงานบนมือถือ */
+      .blob { display: none; }
     }
   </style>
 </head>
@@ -322,52 +462,141 @@
   <div class="blob blob-2"></div>
   <div class="blob blob-3"></div>
 
-  <div class="chat-container">
-    <div class="chat-header">
-      <div class="header-icon">
-        <i class="ph-fill ph-heart"></i>
-      </div>
-      <div class="header-info">
-        <h3>Safe Space</h3>
-        <p>พื้นที่ปลอดภัยสำหรับทุกคน</p>
-      </div>
-    </div>
+  <div class="app-wrapper">
+    
+    <!-- 1. หน้าเมนูหลัก (Main Menu) -->
+    <div id="view-menu" class="view-container active">
+      <div class="menu-content">
+        <i class="ph-fill ph-heart menu-logo"></i>
+        <div>
+          <h2 class="menu-title">Safe Space</h2>
+          <p class="menu-subtitle">เลือกบริการที่คุณต้องการ</p>
+        </div>
 
-    <div class="chat-body" id="messages">
-      <!-- ข้อความจะถูกเพิ่มที่นี่ -->
-      <div class="empty-state">
-        <i class="ph-duotone ph-chat-teardrop-dots"></i>
-        <p>ยังไม่มีข้อความ<br>เริ่มแบ่งปันเรื่องราวของคุณได้เลย</p>
-      </div>
-    </div>
+        <button class="menu-btn btn-chat" onclick="switchView('chat')">
+          <div class="btn-icon"><i class="ph-fill ph-chats-circle"></i></div>
+          <div class="btn-text">
+            <h4>ห้องนั่งเล่น (Chat)</h4>
+            <p>พื้นที่พูดคุยและระบายความในใจ</p>
+          </div>
+        </button>
 
-    <div class="chat-controls">
-      <!-- ส่วนชื่อเล่น -->
-      <div class="input-label">ชื่อเล่น (Nickname)</div>
-      <div class="input-group" style="padding: 8px 15px; border-radius: 12px; margin-bottom: 5px; background: #fafafa;">
-        <i class="ph ph-user" style="color:#aaa; font-size:18px;"></i>
-        <input type="text" id="nicknameInput" class="nickname-input" placeholder="ระบุตัวตน (หรือไม่ใส่ก็ได้)" maxlength="20">
-      </div>
-
-      <!-- ส่วนข้อความ -->
-      <div class="input-group">
-        <input type="text" id="messageInput" class="message-input" placeholder="พิมพ์ข้อความ..." autocomplete="off">
-        <button onclick="sendMessage()" class="send-btn">
-          <i class="ph-fill ph-paper-plane-right"></i>
+        <button class="menu-btn btn-calendar" onclick="switchView('tracker')">
+          <div class="btn-icon"><i class="ph-fill ph-calendar-heart"></i></div>
+          <div class="btn-text">
+            <h4>คาดเดาประจำเดือน</h4>
+            <p>บันทึกและทำนายรอบเดือนถัดไป</p>
+          </div>
         </button>
       </div>
     </div>
+
+    <!-- 2. หน้าแชท (Chat View) -->
+    <div id="view-chat" class="view-container">
+      <button class="back-btn" onclick="switchView('menu')">
+        <i class="ph-bold ph-arrow-left"></i>
+      </button>
+
+      <div class="chat-header">
+        <div class="header-icon">
+          <i class="ph-fill ph-heart"></i>
+        </div>
+        <div class="header-info">
+          <h3>Safe Space</h3>
+          <p>พื้นที่ปลอดภัยสำหรับทุกคน</p>
+        </div>
+      </div>
+
+      <div class="chat-body" id="messages">
+        <div class="empty-state">
+          <i class="ph-duotone ph-chat-teardrop-dots"></i>
+          <p>กำลังโหลดข้อความ...</p>
+        </div>
+      </div>
+
+      <div class="chat-controls">
+        <div class="input-label">ชื่อเล่น (Nickname)</div>
+        <div class="input-group" style="padding: 8px 15px; border-radius: 12px; margin-bottom: 5px; background: #fafafa;">
+          <i class="ph ph-user" style="color:#aaa; font-size:18px;"></i>
+          <input type="text" id="nicknameInput" class="nickname-input" placeholder="ระบุตัวตน (หรือไม่ใส่ก็ได้)" maxlength="20">
+        </div>
+
+        <div class="input-group">
+          <input type="text" id="messageInput" class="message-input" placeholder="พิมพ์ข้อความ..." autocomplete="off">
+          <button onclick="sendMessage()" class="send-btn">
+            <i class="ph-fill ph-paper-plane-right"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. หน้าคาดเดาประจำเดือน (Period Tracker View) -->
+    <div id="view-tracker" class="view-container">
+      <button class="back-btn" onclick="switchView('menu')">
+        <i class="ph-bold ph-arrow-left"></i>
+      </button>
+
+      <div class="calendar-container">
+        <!-- เพิ่มคำอธิบายที่นี่ -->
+        <div class="calendar-instruction">
+          เลือกวันแรกของประจำเดือน
+        </div>
+
+        <div class="calendar-header">
+          <button class="calendar-nav-btn" onclick="changeMonth(-1)"><i class="ph-bold ph-caret-left"></i></button>
+          <div class="month-year" id="monthYearDisplay">June 2024</div>
+          <button class="calendar-nav-btn" onclick="changeMonth(1)"><i class="ph-bold ph-caret-right"></i></button>
+        </div>
+
+        <div class="calendar-grid">
+          <div class="day-name">อา</div>
+          <div class="day-name">จ</div>
+          <div class="day-name">อ</div>
+          <div class="day-name">พ</div>
+          <div class="day-name">พฤ</div>
+          <div class="day-name">ศ</div>
+          <div class="day-name">ส</div>
+        </div>
+        
+        <div class="calendar-grid" id="calendarDays">
+          <!-- วันที่จะถูกสร้างด้วย JS -->
+        </div>
+
+        <div class="legend">
+          <div class="legend-item"><div class="dot pink"></div> วันที่เลือก</div>
+          <div class="legend-item"><div class="dot purple"></div> วันที่คาดการณ์</div>
+        </div>
+
+        <div class="tracker-info">
+          <div class="info-header">
+            <i class="ph-duotone ph-sparkle"></i>
+            <span>ผลการคาดเดา</span>
+          </div>
+          
+          <div class="result-box">
+            <div class="result-label">ประจำเดือนรอบถัดไปจะมาวันที่</div>
+            <div class="result-date" id="predictionText">-</div>
+            <div class="result-desc" id="predictionDesc">กรุณาเลือกวันแรกที่มีประจำเดือนของเดือนนี้</div>
+          </div>
+
+          <div class="cycle-setting">
+            <span>รอบเดือน (วัน):</span>
+            <input type="number" id="cycleLength" class="cycle-input" value="28" min="20" max="45" onchange="calculatePrediction()">
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 
 <script>
-  // --- CONFIG เดิมของคุณ ---
+  // --- PART 1: FIREBASE & CHAT SYSTEM (เหมือนเดิม) ---
   const firebaseConfig = {
     apiKey: "AIzaSyAU9hjYfn0sdAt0IXCTZ6CRbSV4TR6w5kY",
     authDomain: "su102-2cf53.firebaseapp.com",
     projectId: "su102-2cf53"
   };
 
-  // Initialize Firebase
   if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
   }
@@ -378,19 +607,15 @@
 
   let currentUserId = "";
 
-  // Sign In
   auth.signInAnonymously().then(r => {
     currentUserId = r.user.uid;
-    console.log("Logged in as:", currentUserId);
   }).catch(error => {
     console.error("Auth Error:", error);
   });
 
-  // Listen for Messages
+  // Listener Chat
   messageRef.orderBy("timestamp").onSnapshot(snapshot => {
     const box = document.getElementById("messages");
-    
-    // เคลียร์ค่าเก่า (ถ้ามี) หรือจัดการ Empty State
     if (snapshot.empty) {
         box.innerHTML = `
         <div class="empty-state">
@@ -399,72 +624,166 @@
         </div>`;
         return;
     }
-
-    // ถ้ามีข้อมูลใหม่ ให้เคลียร์แล้ววาดใหม่ (แบบง่าย) 
-    // หรือจริงๆ ควร append แค่ตัวใหม่ แต่เพื่อความชัวร์ในโค้ดสั้นๆ เราวาดใหม่ทั้งหมด
     box.innerHTML = "";
-
     snapshot.forEach(doc => {
       const d = doc.data();
       const div = document.createElement("div");
-      
-      // ตรวจสอบว่าเป็นข้อความของ "เรา" หรือ "คนอื่น"
       const isMe = d.userId === currentUserId;
-      
       div.className = `msg-wrapper ${isMe ? 'right' : 'left'}`;
-      
-      // สร้าง HTML ของข้อความ
       const nameHtml = `<div class='msg-name'>${escapeHtml(d.nickname || 'Guest')}</div>`;
       const textHtml = `<div class='msg-content'>${escapeHtml(d.text)}</div>`;
-      
-      div.innerHTML = isMe ? (textHtml) : (nameHtml + textHtml); // ถ้าเป็นเรา ไม่ต้องโชว์ชื่อซ้ำซากก็ได้ หรือจะโชว์ก็ได้
-
+      div.innerHTML = isMe ? (textHtml) : (nameHtml + textHtml);
       box.appendChild(div);
     });
-
-    // Auto Scroll to bottom
     box.scrollTop = box.scrollHeight;
   });
 
   function sendMessage() {
     const text = document.getElementById("messageInput").value.trim();
     const nick = document.getElementById("nicknameInput").value.trim();
-
-    // บังคับให้ใส่ชื่อเล่นไหม? ตามโค้ดเดิมบังคับ แต่ผมปลดให้นิดหน่อยเพื่อให้ UX ลื่นไหล
-    // ถ้าอยากบังคับเหมือนเดิม ให้ uncomment บรรทัดล่าง
-    if (!nick) {
-       alert("กรุณาตั้งชื่อเล่นก่อนเริ่มสนทนา");
-       document.getElementById("nicknameInput").focus();
-       return;
-    }
-
     if (!text) return;
-
     messageRef.add({
       text,
       nickname: nick,
-      userId: currentUserId, // ส่ง ID ไปด้วยเพื่อระบุว่าเป็นข้อความใคร
+      userId: currentUserId,
       timestamp: firebase.firestore.FieldValue.serverTimestamp()
     }).then(() => {
       document.getElementById("messageInput").value = "";
-    }).catch(err => {
-      console.error("Error sending:", err);
-      alert("ส่งข้อความไม่สำเร็จ กรุณาลองใหม่");
     });
   }
 
-  // กด Enter เพื่อส่ง
   document.getElementById("messageInput").addEventListener("keypress", e => {
     if (e.key === "Enter") sendMessage();
   });
 
-  // Security: Escape HTML prevention XSS
   function escapeHtml(text) {
     if (!text) return "";
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
   }
+
+  // --- PART 2: NAVIGATION SYSTEM ---
+  function switchView(viewName) {
+    // ซ่อนทุกหน้า
+    document.querySelectorAll('.view-container').forEach(el => {
+      el.classList.remove('active');
+      el.style.display = 'none'; // ต้องซ่อน display ด้วยเพื่อความชัวร์ในการเรนเดอร์ layout
+    });
+    
+    // แสดงหน้าทีเลือก
+    const target = document.getElementById(`view-${viewName}`);
+    target.style.display = 'flex';
+    // ใช้ setTimeout เล็กน้อยเพื่อให้ CSS animation ทำงาน
+    setTimeout(() => {
+      target.classList.add('active');
+    }, 10);
+  }
+
+  // --- PART 3: CALENDAR & PREDICTION SYSTEM ---
+  const monthNames = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
+  
+  let currentDate = new Date();
+  let selectedDate = null; // วันที่ผู้ใช้เลือก (วันแรกที่มีประจำเดือน)
+  let predictedDate = null; // วันที่ระบบคาดเดา
+
+  function initCalendar() {
+    renderCalendar();
+  }
+
+  function renderCalendar() {
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+
+    document.getElementById("monthYearDisplay").innerText = `${monthNames[month]} ${year + 543}`; // ปีพุทธศักราช
+
+    const firstDay = new Date(year, month, 1).getDay(); // วันแรกของเดือนเริ่มวันอะไร (0-6)
+    const daysInMonth = new Date(year, month + 1, 0).getDate(); // เดือนนี้มีกี่วัน
+
+    const calendarGrid = document.getElementById("calendarDays");
+    calendarGrid.innerHTML = "";
+
+    // สร้างช่องว่างสำหรับวันก่อนหน้า
+    for (let i = 0; i < firstDay; i++) {
+      const emptyDiv = document.createElement("div");
+      emptyDiv.className = "calendar-day empty";
+      calendarGrid.appendChild(emptyDiv);
+    }
+
+    // สร้างวันที่
+    const today = new Date();
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dayDiv = document.createElement("div");
+      dayDiv.className = "calendar-day";
+      dayDiv.innerText = day;
+
+      // ตรวจสอบว่าเป็นวันนี้หรือไม่
+      if (day === today.getDate() && month === today.getMonth() && year === today.getFullYear()) {
+        dayDiv.classList.add("today");
+      }
+
+      // ตรวจสอบว่าเป็นวันที่เลือกไว้หรือไม่
+      if (selectedDate && 
+          day === selectedDate.getDate() && 
+          month === selectedDate.getMonth() && 
+          year === selectedDate.getFullYear()) {
+        dayDiv.classList.add("selected");
+      }
+
+      // ตรวจสอบว่าเป็นวันที่คาดการณ์หรือไม่
+      if (predictedDate && 
+          day === predictedDate.getDate() && 
+          month === predictedDate.getMonth() && 
+          year === predictedDate.getFullYear()) {
+        dayDiv.classList.add("predicted");
+      }
+
+      // Add click event
+      dayDiv.onclick = () => selectDate(day);
+      
+      calendarGrid.appendChild(dayDiv);
+    }
+  }
+
+  function changeMonth(step) {
+    currentDate.setMonth(currentDate.getMonth() + step);
+    renderCalendar();
+  }
+
+  function selectDate(day) {
+    // สร้าง object Date จากวันที่กด
+    selectedDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
+    calculatePrediction();
+    renderCalendar(); // รีเฟรชปฏิทินเพื่อแสดงไฮไลท์
+  }
+
+  function calculatePrediction() {
+    if (!selectedDate) return;
+
+    const cycleLength = parseInt(document.getElementById("cycleLength").value) || 28;
+    
+    // คำนวณวันที่คาดการณ์ (Selected Date + Cycle Length)
+    predictedDate = new Date(selectedDate);
+    predictedDate.setDate(selectedDate.getDate() + cycleLength);
+
+    // อัพเดท UI
+    const options = { day: 'numeric', month: 'long', year: 'numeric' };
+    // แปลงปีเป็น พ.ศ.
+    const predDay = predictedDate.getDate();
+    const predMonth = monthNames[predictedDate.getMonth()];
+    const predYear = predictedDate.getFullYear() + 543;
+
+    document.getElementById("predictionText").innerText = `${predDay} ${predMonth} ${predYear}`;
+    document.getElementById("predictionText").style.color = "#a18cd1";
+    document.getElementById("predictionDesc").innerText = `(คาดการณ์จากรอบเดือน ${cycleLength} วัน)`;
+
+    // ถ้าวันที่คาดการณ์อยู่คนละเดือนกับที่ดูอยู่ ให้ผู้ใช้เห็นว่ามันไปเดือนหน้า
+    // แต่เราอาจจะไม่เปลี่ยนหน้าปฏิทินอัตโนมัติเพื่อให้ผู้ใช้ไม่งง
+  }
+
+  // เริ่มต้นปฏิทินเมื่อโหลด
+  initCalendar();
+
 </script>
 
 </body>
